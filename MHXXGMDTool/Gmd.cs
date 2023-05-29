@@ -202,7 +202,7 @@ namespace MHXXGMDTool
 
                 bw.BaseStream.Position = 0;
 
-                bw.Write(Header.Magic);
+                bw.Write(Encoding.UTF8.GetBytes(Header.Magic));
                 bw.Write((uint)Header.Version);
                 bw.Write((int)Header.Language);
                 bw.Write(Header.Unknown);
