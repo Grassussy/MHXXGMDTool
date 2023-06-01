@@ -10,115 +10,55 @@ using System.Windows.Forms;
 
 using System.IO;
 using System.Reflection;
+using System.Text.RegularExpressions;
 
 namespace MHXXGMDTool
 {
     public partial class Editor : Form
     {
-        private Gmd _gmd;
-        private string OpenedFilePath;
+        private string FormTitle = "MHXX/MHGU GMD Tool v" + Assembly.GetExecutingAssembly().GetName().Version.ToString();
 
         public Editor()
         {
             InitializeComponent();
         }
 
-        private void OpenFile(string fileDragDrop, bool isDragDrop)
+        private void Editor_Load(object sender, EventArgs e)
         {
-            OpenFileDialog ofd = new OpenFileDialog();
-            ofd.Title = "Select MHXX/MHGU GMD file";
-            ofd.Filter = "MHXX/MHGU GMD files|*.gmd";
-            if (isDragDrop)
-            {
-                if (fileDragDrop != OpenedFilePath)
-                    CloseFile();
-                else
-                    return;
-                OpenedFilePath = fileDragDrop;
-            }
-            else
-            {
-                if (ofd.ShowDialog() != DialogResult.OK)
-                    return;
-                if (ofd.FileName != OpenedFilePath)
-                    CloseFile();
-                else
-                    return;
-                OpenedFilePath = ofd.FileName;
-            }
-            ofd.Dispose();
-            FileInfo fi = new FileInfo(OpenedFilePath);
-            _gmd = new Gmd(fi.OpenRead());
-            UpdateForm();
-        }
-
-        private void CloseFile()
-        {
-            OpenedFilePath = "";
             ClearForm();
         }
 
-        private void ClearForm()
+        private void Editor_DragEnter(object sender, DragEventArgs e)
         {
-            treeViewEntries.Nodes.Clear();
-            textBoxText.Clear();
+            e.Effect = DragDropEffects.Copy;
         }
 
-        private void UpdateForm()
+        private void Editor_DragDrop(object sender, DragEventArgs e)
         {
-            foreach (var entry in _gmd.Labels)
-                treeViewEntries.Nodes.Add(entry.Name);
-            treeViewEntries.SelectedNode = treeViewEntries.Nodes[0];
+            var files = (string[])e.Data.GetData(DataFormats.FileDrop, false);
+            if (files.Length > 0 && File.Exists(files[0]))
+                OpenFile(files[0], true);
         }
 
-        private void ExportToCSV()
+        private void treeViewEntries_AfterSelect(object sender, TreeViewEventArgs e)
         {
-            if (OpenedFilePath == "" || OpenedFilePath == null)
-                return;
-            SaveFileDialog sfd = new SaveFileDialog();
-            sfd.Title = "Export to CSV";
-            sfd.Filter = "CSV File|*.csv";
-            sfd.FileName = Path.GetFileNameWithoutExtension(OpenedFilePath);
-            if (sfd.ShowDialog() != DialogResult.OK)
-                return;
-            var SaveFilePath = sfd.FileName;
-            sfd.Dispose();
-            WriteCSV(OpenedFilePath, SaveFilePath);
+            textBoxText.Text = _gmd.Labels[treeViewEntries.SelectedNode.Index].Text;
         }
 
-        private void BatchExportCSV()
+        private void textBoxText_KeyDown(object sender, KeyEventArgs e)
         {
-            OpenFileDialog ofd = new OpenFileDialog();
-            ofd.Title = "Select MHXX/MHGU GMD files";
-            ofd.Filter = "MHXX/MHGU GMD files|*.gmd";
-            ofd.Multiselect = true;
-            FolderBrowserDialog fbd = new FolderBrowserDialog();
-            fbd.Description = "Select Export Folder";
-            if (ofd.ShowDialog() != DialogResult.OK)
-                return;
-            if (fbd.ShowDialog() != DialogResult.OK)
-                return;
-            var files = ofd.FileNames;
-            foreach (var filename in files)
-                WriteCSV(filename, fbd.SelectedPath + "\\" + Path.GetFileNameWithoutExtension(filename) + ".csv");
+            if (e.Control & e.KeyCode == Keys.A)
+                textBoxText.SelectAll();
+
+            if (e.Control & (e.KeyCode != Keys.V && e.KeyCode != Keys.C && e.KeyCode != Keys.X && e.KeyCode != Keys.Z && e.KeyCode != Keys.Left && e.KeyCode != Keys.Right))
+                e.SuppressKeyPress = true;
         }
 
-        private void WriteCSV(string filename, string output)
+        private void textBoxText_KeyUp(object sender, KeyEventArgs e)
         {
-            FileInfo fi = new FileInfo(filename);
-            var batchGmd = new Gmd(fi.OpenRead());
-            using (StreamWriter sw = new StreamWriter(output, false, Encoding.UTF8))
-            {
-                foreach (var entry in batchGmd.Labels)
-                {
-                    var sName = batchGmd.GetLabelCount() > 0 ? entry.Name : "";
-                    var sText = entry.Text.Replace("\r\n", "\\r\\n");
-                    sw.WriteLine(String.Format("{0},{1},\"{2}\"", entry.TextID, sName, sText));
-                }
-            }
+            _gmd.Labels[treeViewEntries.SelectedNode.Index].Text = textBoxText.Text;
         }
 
-        #region Tool Strip Items
         private void openToolStripMenuItem_Click(object sender, EventArgs e)
         {
             OpenFile("", false);
@@ -126,12 +66,14 @@ namespace MHXXGMDTool
 
         private void saveToolStripMenuItem_Click(object sender, EventArgs e)
         {
-
+            SaveFile(false);
+            Text = FormTitle + " - " + Path.GetFileName(OpenedFilePath);
         }
 
         private void saveAsToolStripMenuItem_Click(object sender, EventArgs e)
         {
-
+            SaveFile(true);
+            Text = FormTitle + " - " + Path.GetFileName(OpenedFilePath);
         }
 
         private void closeToolStripMenuItem_Click(object sender, EventArgs e)
@@ -156,38 +98,13 @@ namespace MHXXGMDTool
 
         private void importCSVToolStripMenuItem_Click(object sender, EventArgs e)
         {
-
+            ImportCSV();
         }
 
         private void aboutToolStripMenuItem_Click(object sender, EventArgs e)
         {
-
+            using (About about = new About())
+                about.ShowDialog();
         }
-        #endregion
-
-        #region Component Events
-        private void Editor_Load(object sender, EventArgs e)
-        {
-            string version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
-            Text = "MHXX/MHGU GMD Tool v" + version;
-        }
-
-        private void Editor_DragEnter(object sender, DragEventArgs e)
-        {
-            e.Effect = DragDropEffects.Copy;
-        }
-
-        private void Editor_DragDrop(object sender, DragEventArgs e)
-        {
-            string[] files = (string[])e.Data.GetData(DataFormats.FileDrop, false);
-            if (files.Length > 0 && File.Exists(files[0]))
-                OpenFile(files[0], true);
-        }
-
-        private void treeViewEntries_AfterSelect(object sender, TreeViewEventArgs e)
-        {
-            textBoxText.Text = _gmd.Labels[treeViewEntries.SelectedNode.Index].Text;
-        }
-        #endregion
     }
 }

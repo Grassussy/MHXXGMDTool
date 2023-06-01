@@ -39,8 +39,8 @@ namespace MHXXGMDTool
             this.exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.exportToCSVToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.importFromCSVToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.batchExportToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.importCSVToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.treeViewEntries = new System.Windows.Forms.TreeView();
             this.textBoxText = new System.Windows.Forms.TextBox();
@@ -117,8 +117,8 @@ namespace MHXXGMDTool
             // 
             this.toolsToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.exportToCSVToolStripMenuItem,
-            this.batchExportToolStripMenuItem,
-            this.importCSVToolStripMenuItem});
+            this.importFromCSVToolStripMenuItem,
+            this.batchExportToolStripMenuItem});
             this.toolsToolStripMenuItem.Name = "toolsToolStripMenuItem";
             this.toolsToolStripMenuItem.Size = new System.Drawing.Size(46, 20);
             this.toolsToolStripMenuItem.Text = "Tools";
@@ -126,23 +126,23 @@ namespace MHXXGMDTool
             // exportToCSVToolStripMenuItem
             // 
             this.exportToCSVToolStripMenuItem.Name = "exportToCSVToolStripMenuItem";
-            this.exportToCSVToolStripMenuItem.Size = new System.Drawing.Size(146, 22);
+            this.exportToCSVToolStripMenuItem.Size = new System.Drawing.Size(163, 22);
             this.exportToCSVToolStripMenuItem.Text = "Export to CSV";
             this.exportToCSVToolStripMenuItem.Click += new System.EventHandler(this.exportToCSVToolStripMenuItem_Click);
+            // 
+            // importFromCSVToolStripMenuItem
+            // 
+            this.importFromCSVToolStripMenuItem.Name = "importFromCSVToolStripMenuItem";
+            this.importFromCSVToolStripMenuItem.Size = new System.Drawing.Size(163, 22);
+            this.importFromCSVToolStripMenuItem.Text = "Import from CSV";
+            this.importFromCSVToolStripMenuItem.Click += new System.EventHandler(this.importCSVToolStripMenuItem_Click);
             // 
             // batchExportToolStripMenuItem
             // 
             this.batchExportToolStripMenuItem.Name = "batchExportToolStripMenuItem";
-            this.batchExportToolStripMenuItem.Size = new System.Drawing.Size(146, 22);
+            this.batchExportToolStripMenuItem.Size = new System.Drawing.Size(163, 22);
             this.batchExportToolStripMenuItem.Text = "Batch Export";
             this.batchExportToolStripMenuItem.Click += new System.EventHandler(this.batchExportToolStripMenuItem_Click);
-            // 
-            // importCSVToolStripMenuItem
-            // 
-            this.importCSVToolStripMenuItem.Name = "importCSVToolStripMenuItem";
-            this.importCSVToolStripMenuItem.Size = new System.Drawing.Size(146, 22);
-            this.importCSVToolStripMenuItem.Text = "Import CSV";
-            this.importCSVToolStripMenuItem.Click += new System.EventHandler(this.importCSVToolStripMenuItem_Click);
             // 
             // aboutToolStripMenuItem
             // 
@@ -176,6 +176,8 @@ namespace MHXXGMDTool
             this.textBoxText.Size = new System.Drawing.Size(700, 404);
             this.textBoxText.TabIndex = 2;
             this.textBoxText.WordWrap = false;
+            this.textBoxText.KeyDown += new System.Windows.Forms.KeyEventHandler(this.textBoxText_KeyDown);
+            this.textBoxText.KeyUp += new System.Windows.Forms.KeyEventHandler(this.textBoxText_KeyUp);
             // 
             // Editor
             // 
@@ -188,6 +190,7 @@ namespace MHXXGMDTool
             this.Controls.Add(this.menuStrip1);
             this.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.MainMenuStrip = this.menuStrip1;
+            this.MaximizeBox = false;
             this.Name = "Editor";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "MHXX GMD Tool";
@@ -213,7 +216,7 @@ namespace MHXXGMDTool
         private System.Windows.Forms.ToolStripMenuItem toolsToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem exportToCSVToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem batchExportToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem importCSVToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem importFromCSVToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem aboutToolStripMenuItem;
         private System.Windows.Forms.TreeView treeViewEntries;
         private System.Windows.Forms.ToolStripMenuItem closeToolStripMenuItem;
