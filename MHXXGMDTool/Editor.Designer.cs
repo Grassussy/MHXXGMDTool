@@ -194,6 +194,7 @@ namespace MHXXGMDTool
             this.Name = "Editor";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "MHXX GMD Tool";
+            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Editor_FormClosing);
             this.Load += new System.EventHandler(this.Editor_Load);
             this.DragDrop += new System.Windows.Forms.DragEventHandler(this.Editor_DragDrop);
             this.DragEnter += new System.Windows.Forms.DragEventHandler(this.Editor_DragEnter);
