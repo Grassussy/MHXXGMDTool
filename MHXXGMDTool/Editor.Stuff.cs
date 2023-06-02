@@ -124,7 +124,7 @@ namespace MHXXGMDTool
 
             textBoxText.Clear();
 
-            Text = FormTitle;
+            this.Text = FormTitle;
 
             saveToolStripMenuItem.Enabled = false;
             saveAsToolStripMenuItem.Enabled = false;
@@ -144,7 +144,7 @@ namespace MHXXGMDTool
             treeViewEntries.EndUpdate();
             treeViewEntries.Focus();
 
-            Text = TitleName();
+            this.Text = TitleName();
 
             saveToolStripMenuItem.Enabled = true;
             saveAsToolStripMenuItem.Enabled = true;
@@ -216,7 +216,6 @@ namespace MHXXGMDTool
                 {
                     var sName = batchGmd.GetLabelCount() > 0 ? entry.Name : "";
                     var sText = entry.Text.Replace("\r\n", "<br>");
-                    //sw.WriteLine(String.Format("\"{0}\",\"{1}\",\"{2}\"", entry.TextID, sName, sText));
                     sw.WriteLine(String.Format("{0}\0{1}\0{2}", entry.TextID, sName, sText));
                 }
             }
@@ -242,10 +241,8 @@ namespace MHXXGMDTool
                 {
                     while (!sr.EndOfStream)
                     {
-                        //var data = Regex.Split(sr.ReadLine(), ",(?=(?:[^\"]*\"[^\"]*\")*(?![^\"]*\"))");
                         var data = sr.ReadLine().Split('\0');
-                        //_gmd.Labels[i].Text = data[2].Replace("<br>", "\r\n").Replace("\"", "");
-                        _gmd.Labels[(int)UInt32.Parse(data[0])].Text = data[2].Replace("<br>", "\r\n");
+                        _gmd.Labels[Int32.Parse(data[0])].Text = data[2].Replace("<br>", "\r\n");
                     }
                 }
             }

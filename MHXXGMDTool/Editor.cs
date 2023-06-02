@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Diagnostics;
+using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
 
@@ -13,6 +15,7 @@ namespace MHXXGMDTool
 
         private void Editor_Load(object sender, EventArgs e)
         {
+            this.Icon = Icon.ExtractAssociatedIcon(Process.GetCurrentProcess().MainModule.FileName);
             ClearForm();
         }
 
@@ -62,7 +65,7 @@ namespace MHXXGMDTool
         {
             _gmd.Labels[treeViewEntries.SelectedNode.Index].Text = textBoxText.Text;
             _hasChanges = true;
-            Text = TitleName() + "*";
+            this.Text = TitleName() + "*";
         }
 
         private void openToolStripMenuItem_Click(object sender, EventArgs e)

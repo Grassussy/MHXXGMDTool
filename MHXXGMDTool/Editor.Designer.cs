@@ -40,6 +40,7 @@ namespace MHXXGMDTool
             this.toolsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.exportToCSVToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.importFromCSVToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
             this.batchExportToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.treeViewEntries = new System.Windows.Forms.TreeView();
@@ -118,6 +119,7 @@ namespace MHXXGMDTool
             this.toolsToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.exportToCSVToolStripMenuItem,
             this.importFromCSVToolStripMenuItem,
+            this.toolStripSeparator2,
             this.batchExportToolStripMenuItem});
             this.toolsToolStripMenuItem.Name = "toolsToolStripMenuItem";
             this.toolsToolStripMenuItem.Size = new System.Drawing.Size(46, 20);
@@ -136,6 +138,11 @@ namespace MHXXGMDTool
             this.importFromCSVToolStripMenuItem.Size = new System.Drawing.Size(163, 22);
             this.importFromCSVToolStripMenuItem.Text = "Import from CSV";
             this.importFromCSVToolStripMenuItem.Click += new System.EventHandler(this.importCSVToolStripMenuItem_Click);
+            // 
+            // toolStripSeparator2
+            // 
+            this.toolStripSeparator2.Name = "toolStripSeparator2";
+            this.toolStripSeparator2.Size = new System.Drawing.Size(160, 6);
             // 
             // batchExportToolStripMenuItem
             // 
@@ -222,5 +229,6 @@ namespace MHXXGMDTool
         private System.Windows.Forms.TreeView treeViewEntries;
         private System.Windows.Forms.ToolStripMenuItem closeToolStripMenuItem;
         private System.Windows.Forms.TextBox textBoxText;
+        private System.Windows.Forms.ToolStripSeparator toolStripSeparator2;
     }
 }
