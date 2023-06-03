@@ -117,8 +117,8 @@ namespace MHXXGMDTool
 
         private void aboutToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            using (About about = new About())
-                about.ShowDialog();
+            using var about = new About();
+            about.ShowDialog();
         }
     }
 }
