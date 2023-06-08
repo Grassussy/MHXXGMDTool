@@ -1,6 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
-using System.Reflection;
 using System.Text;
 using System.Windows.Forms;
 
@@ -10,17 +11,25 @@ namespace MHXXGMDTool
     {
         private Gmd _gmd;
 
-        private readonly string FormTitle = "MHXX/MHGU GMD Tool v" + Assembly.GetExecutingAssembly().GetName().Version.ToString();
-        private readonly string FileDialogTitle = "Select MHXX/MHGU GMD file";
-        private readonly string FileDialogFilter = "MHXX/MHGU GMD files|*.gmd";
+        private readonly string formTitle = "MHXX GMD Tool v" + FileVersionInfo.GetVersionInfo("MHXXGMDTool.exe").ProductVersion;
+        private readonly string fileDialogTitle = "Select MHXX GMD file";
+        private readonly string fileDialogFilter = "MHXX GMD files|*.gmd";
 
         private string _openFileName = "";
+
         private bool _fileOpen;
         private bool _hasChanges;
 
         private string TitleName()
         {
-            return FormTitle + " - " + Path.GetFileName(_openFileName);
+            return formTitle + " - " + Path.GetFileName(_openFileName);
+        }
+
+        private void FileChanges()
+        {
+            this.Text = TitleName() + "*";
+            saveToolStripMenuItem.Enabled = true;
+            _hasChanges = true;
         }
 
         private void ConfirmOpenFile(string filename = "")
@@ -46,17 +55,22 @@ namespace MHXXGMDTool
         {
             var ofd = new OpenFileDialog
             {
-                Title = FileDialogTitle,
-                Filter = FileDialogFilter
+                Title = fileDialogTitle,
+                Filter = fileDialogFilter
             };
 
             var dr = DialogResult.OK;
 
-            if (filename == string.Empty) dr = ofd.ShowDialog();
+            if (filename == string.Empty)
+                dr = ofd.ShowDialog();
 
-            if (dr != DialogResult.OK) return;
+            if (dr != DialogResult.OK)
+                return;
 
-            if (filename == string.Empty) filename = ofd.FileName;
+            if (filename == string.Empty)
+                filename = ofd.FileName;
+
+            ofd.Dispose();
 
             CloseFile();
 
@@ -64,11 +78,16 @@ namespace MHXXGMDTool
 
             try
             {
-                var fi = new FileInfo(filename);
-                _gmd = new Gmd(fi.OpenRead());
-                _fileOpen = true;
-                _hasChanges = false;
-                UpdateForm();
+                var fiInput = new FileInfo(filename);
+
+                _gmd = new Gmd(fiInput.OpenRead());
+
+                if (_gmd.Labels.Count > 0)
+                {
+                    UpdateForm();
+                    _fileOpen = true;
+                    _hasChanges = false;
+                }
             }
             catch (Exception ex)
             {
@@ -82,7 +101,7 @@ namespace MHXXGMDTool
             var dr = DialogResult.OK;
 
             sfd.Title = "Save as GMD";
-            sfd.Filter = FileDialogFilter;
+            sfd.Filter = fileDialogFilter;
             sfd.FileName = Path.GetFileNameWithoutExtension(_openFileName);
 
             if (_openFileName == "" || saveAs)
@@ -91,15 +110,26 @@ namespace MHXXGMDTool
             if ((_openFileName == "" || saveAs) && dr == DialogResult.OK)
                 _openFileName = sfd.FileName;
 
-            sfd.Dispose();
+            if (dr != DialogResult.OK)
+                return dr;
 
-            if (dr != DialogResult.OK) return dr;
+            sfd.Dispose();
 
             try
             {
-                var fi = new FileInfo(_openFileName);
-                _gmd.Save(fi.OpenWrite());
+                var fiInput = new FileInfo(_openFileName);
+                var i = treeViewEntries.SelectedNode.Index;
+
+                _gmd.Save(fiInput.OpenWrite());
+
                 _hasChanges = false;
+
+                if (saveAs)
+                {
+                    _gmd = new Gmd(fiInput.OpenRead());
+                    CloseFile();
+                    UpdateForm(i);
+                }
             }
             catch (Exception ex)
             {
@@ -124,7 +154,7 @@ namespace MHXXGMDTool
 
             textBoxText.Clear();
 
-            this.Text = FormTitle;
+            this.Text = formTitle;
 
             saveToolStripMenuItem.Enabled = false;
             saveAsToolStripMenuItem.Enabled = false;
@@ -135,18 +165,18 @@ namespace MHXXGMDTool
             textBoxText.Enabled = false;
         }
 
-        private void UpdateForm()
+        private void UpdateForm(int index = 0)
         {
             treeViewEntries.BeginUpdate();
             foreach (var entry in _gmd.Labels)
                 treeViewEntries.Nodes.Add(entry.Name);
-            treeViewEntries.SelectedNode = treeViewEntries.Nodes[0];
+            treeViewEntries.SelectedNode = treeViewEntries.Nodes[index];
             treeViewEntries.EndUpdate();
-            treeViewEntries.Focus();
+
+            this.ActiveControl = null;
 
             this.Text = TitleName();
 
-            saveToolStripMenuItem.Enabled = true;
             saveAsToolStripMenuItem.Enabled = true;
             closeToolStripMenuItem.Enabled = true;
             exportToCSVToolStripMenuItem.Enabled = true;
@@ -158,49 +188,88 @@ namespace MHXXGMDTool
         private void ExportCSV(bool isBatch = false)
         {
             string[] files;
-            string savePath;
             string source;
             string destination;
 
-            var sfd = new SaveFileDialog
-            {
-                Title = "Export to CSV",
-                Filter = "CSV File|*.csv",
-                FileName = Path.GetFileNameWithoutExtension(_openFileName)
-            };
+            var sfd = new SaveFileDialog();
             var fbd = new FolderBrowserDialog();
 
             if (isBatch)
             {
+                fbd.UseDescriptionForTitle = true;
                 fbd.Description = "Select folder that contains MHXX GMD files";
-                if (fbd.ShowDialog() != DialogResult.OK) return;
+                if (fbd.ShowDialog() != DialogResult.OK)
+                    return;
                 source = fbd.SelectedPath;
+
                 fbd.Description = "Select destination folder";
-                if (fbd.ShowDialog() != DialogResult.OK) return;
+                if (fbd.ShowDialog() != DialogResult.OK)
+                    return;
                 destination = fbd.SelectedPath;
 
                 files = Directory.GetFiles(source, "*.gmd", SearchOption.AllDirectories);
-                savePath = destination;
+
                 fbd.Dispose();
             }
             else
             {
-                if (sfd.ShowDialog() != DialogResult.OK) return;
+                sfd.Title = "Export to CSV";
+                sfd.Filter = "CSV File|*.csv";
+                sfd.FileName = Path.GetFileNameWithoutExtension(_openFileName);
+
+                if (sfd.ShowDialog() != DialogResult.OK)
+                    return;
+
                 files = new[] { _openFileName };
-                savePath = sfd.FileName;
                 source = "";
+                destination = sfd.FileName;
+
                 sfd.Dispose();
             }
 
             try
             {
-                var fileCount = 0;
-                foreach (var fileName in files)
+                var listFailed = new List<string>();
+                var countTrue = 0;
+                var countFalse = 0;
+
+                foreach (var input in files)
                 {
-                    WriteCSV(fileName, isBatch ? savePath + fileName.Replace(source, "").Replace(".gmd", ".csv") : savePath);
-                    fileCount++;
+                    var output = isBatch ? destination + input.Replace(source, "").Replace(".gmd", ".csv") : destination;
+
+                    if (WriteCSV(input, isBatch, output))
+                        countTrue++;
+                    else
+                    {
+                        countFalse++;
+                        if (isBatch)
+                            listFailed.Add(input.Replace(destination, ""));
+                    }
                 }
-                MessageBox.Show(isBatch ? "Batch export to CSV completed successfully.\n" + fileCount + " file(s) successfully exported." : "Export to CSV completed successfully.", "Export to CSV", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                if (isBatch)
+                {
+                    if (countFalse == 0)
+                        MessageBox.Show("Batch export completed successfully.\n" + countTrue + " file(s) successfully exported.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    else if (countTrue == 0)
+                        MessageBox.Show("Failed to batch export.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    else
+                    {
+                        var list = "";
+                        foreach (var s in listFailed)
+                            list += s.Replace(source + "\\", "") + Environment.NewLine;
+                        MessageBox.Show("Only " + countTrue + " out of " + (countTrue + countFalse) + " file(s) successfully exported.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                        CreateLogForUnsuccessfulFiles("export", list);
+                    }
+                }
+                else
+                {
+                    if (countFalse == 0)
+                        MessageBox.Show("Export CSV completed successfully.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    else
+                        MessageBox.Show("Failed to export to CSV.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
             }
             catch (Exception ex)
             {
@@ -208,48 +277,191 @@ namespace MHXXGMDTool
             }
         }
 
-        private static void WriteCSV(string filename, string output)
+        private bool WriteCSV(string filename, bool isBatch, string output)
         {
-            var fi = new FileInfo(filename);
-            (new FileInfo(output)).Directory.Create();
-            var batchGmd = new Gmd(fi.OpenRead());
-            using var sw = new StreamWriter(output, false, new UTF8Encoding(false));
-            foreach (var entry in batchGmd.Labels)
+            Gmd batchGmd;
+            var fiInput = new FileInfo(filename);
+            var fiOutput = new FileInfo(output);
+
+            fiOutput.Directory.Create();
+
+            if (isBatch)
+                batchGmd = new Gmd(fiInput.OpenRead());
+            else
+                batchGmd = _gmd;
+
+            if (batchGmd.Labels.Count == 0)
+                return false;
+
+            using (var sw = new StreamWriter(output, false, new UTF8Encoding(false)))
             {
-                var sName = batchGmd.GetLabelCount() > 0 ? entry.Name : "";
-                var sText = entry.Text.Replace("\r\n", "<br>");
-                sw.WriteLine(String.Format("{0}\0{1}\0{2}", entry.TextID, sName, sText));
+                foreach (var entry in batchGmd.Labels)
+                {
+                    var sName = batchGmd.GetLabelCount() > 0 ? entry.Name : "";
+                    var sText = entry.Text.Replace("\r\n", "<br>");
+
+                    if (Properties.Settings.Default.Export_IncludeID == true)
+                        sw.Write(entry.TextID + "\0");
+                    if (Properties.Settings.Default.Export_IncludeName == true && sName != "")
+                        sw.Write(sName + "\0");
+
+                    sw.WriteLine(sText);
+                }
             }
+
+            return true;
         }
 
-        private void ImportCSV()
+        private void ImportCSV(bool isBatch = false)
         {
-            if (_openFileName == "")
-                return;
-            var FilePathNoExt = Path.GetFileNameWithoutExtension(_openFileName);
-            var ofd = new OpenFileDialog
+            string[] files;
+            string source;
+            string destination;
+
+            var ofd = new OpenFileDialog();
+            var fbd = new FolderBrowserDialog();
+
+            if (isBatch)
             {
-                Title = "Select a CSV file",
-                Filter = FilePathNoExt + ".csv|" + FilePathNoExt + ".csv"
-            };
-            if (ofd.ShowDialog() != DialogResult.OK)
-                return;
-            var SavePath = ofd.FileName;
+                fbd.UseDescriptionForTitle = true;
+                fbd.Description = "Select folder that contains CSV files";
+                if (fbd.ShowDialog() != DialogResult.OK)
+                    return;
+                source = fbd.SelectedPath;
+
+                fbd.Description = "Select folder that contains MHXX GMD files";
+                if (fbd.ShowDialog() != DialogResult.OK)
+                    return;
+                destination = fbd.SelectedPath;
+
+                files = Directory.GetFiles(source, "*.csv", SearchOption.AllDirectories);
+
+                fbd.Dispose();
+            }
+            else
+            {
+                var s = Path.GetFileNameWithoutExtension(_openFileName);
+
+                ofd.Title = "Select a CSV file";
+                ofd.Filter = s + ".csv|" + s + ".csv";
+                ofd.FileName = s;
+
+                if (ofd.ShowDialog() != DialogResult.OK)
+                    return;
+
+                files = new[] { ofd.FileName };
+                source = "";
+                destination = "";
+
+                ofd.Dispose();
+            }
             try
             {
-                var fi = new FileInfo(SavePath);
-                using (var sr = new StreamReader(fi.OpenRead()))
+                var listFailed = new List<string>();
+                var countTrue = 0;
+                var countFalse = 0;
+
+                foreach (var input in files)
                 {
-                    while (!sr.EndOfStream)
+                    var output = isBatch ? destination + input.Replace(source, "").Replace(".csv", ".gmd") : "";
+
+                    if (ImportData(input, isBatch, output))
+                        countTrue++;
+                    else
                     {
-                        var data = sr.ReadLine().Split('\0');
-                        _gmd.Labels[Int32.Parse(data[0])].Text = data[2].Replace("<br>", "\r\n");
+                        countFalse++;
+                        if (isBatch)
+                            listFailed.Add(input.Replace(destination, ""));
                     }
                 }
-                MessageBox.Show("Import from CSV completed successfully.", "Import from CSV", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                if (isBatch)
+                {
+                    if (countFalse == 0)
+                        MessageBox.Show("Batch import completed successfully.\n" + countTrue + " file(s) successfully imported.", "Import", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    else if (countTrue == 0)
+                        MessageBox.Show("Failed to batch import.", "Import", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    else
+                    {
+                        var list = "";
+                        foreach (var s in listFailed)
+                            list += s.Replace(source + "\\", "") + Environment.NewLine;
+                        MessageBox.Show("Only " + countTrue + " out of " + (countTrue + countFalse) + " file(s) successfully imported.", "Import", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                        CreateLogForUnsuccessfulFiles("import", list);
+                    }
+                }
+                else
+                {
+                    if (countFalse == 0)
+                    {
+                        textBoxText.Text = _gmd.Labels[treeViewEntries.SelectedNode.Index].Text;
+                        FileChanges();
+                        MessageBox.Show("Import from CSV completed successfully.", "Import", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    else
+                        MessageBox.Show("Failed to import from CSV.", "Import", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
             }
             catch (Exception ex)
             {
+                MessageBox.Show(this, ex.ToString(), "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private bool ImportData(string filename, bool isBatch, string output)
+        {
+            Gmd batchGmd;
+            var fiInput = new FileInfo(filename);
+            var fiOutput = isBatch ? new FileInfo(output) : null;
+
+            if (isBatch)
+                batchGmd = new Gmd(fiOutput.OpenRead());
+            else
+                batchGmd = _gmd;
+
+            using var sr = new StreamReader(fiInput.OpenRead(), new UTF8Encoding(false));
+
+            if (File.ReadAllLines(filename).Length == batchGmd.Labels.Count)
+            {
+                var i = 0;
+
+                while (!sr.EndOfStream)
+                {
+                    var data = sr.ReadLine().Split('\0');
+                    batchGmd.Labels[i].Text = data[^1].Replace("<br>", "\r\n");
+                    i++;
+                }
+
+                if (isBatch)
+                    batchGmd.Save(fiOutput.OpenWrite());
+
+                return true;
+            }
+            else
+                return false;
+        }
+
+        private void CreateLogForUnsuccessfulFiles(string s, string list)
+        {
+            try
+            {
+                using (var sr = new StreamWriter("log.txt", false, new UTF8Encoding(false)))
+                    sr.Write("List of files that failed to " + s + ":" + Environment.NewLine + Environment.NewLine + list);
+                File.SetAttributes("log.txt", FileAttributes.Hidden | FileAttributes.System);
+                using (var process = new Process())
+                {
+                    process.StartInfo.FileName = "notepad.exe";
+                    process.StartInfo.Arguments = "log.txt";
+                    process.Start();
+                    process.WaitForExit();
+                }
+                File.Delete("log.txt");
+            }
+            catch (Exception ex)
+            {
+                if ((new FileInfo("log.txt").Exists))
+                    File.Delete("log.txt");
                 MessageBox.Show(this, ex.ToString(), "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }

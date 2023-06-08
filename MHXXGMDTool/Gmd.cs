@@ -231,8 +231,9 @@ namespace MHXXGMDTool
             var bytes = new List<byte>();
             var startOffset = br.BaseStream.Position;
 
-            for (var i = 0; i < length; i++)
-                bytes.Add(br.ReadByte());
+            if (br.BaseStream.Position != br.BaseStream.Length)
+                for (var i = 0; i < length; i++)
+                    bytes.Add(br.ReadByte());
 
             br.BaseStream.Seek(startOffset, SeekOrigin.Begin);
 

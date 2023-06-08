@@ -21,14 +21,15 @@ namespace MHXXGMDTool
 
         private void Editor_DragEnter(object sender, DragEventArgs e)
         {
-            e.Effect = DragDropEffects.Copy;
+            var files = (string[])e.Data.GetData(DataFormats.FileDrop, false);
+            if (files.Length > 0 && File.Exists(files[0]) && Path.GetExtension(files[0]) == ".gmd")
+                e.Effect = DragDropEffects.Copy;
         }
 
         private void Editor_DragDrop(object sender, DragEventArgs e)
         {
             var files = (string[])e.Data.GetData(DataFormats.FileDrop, false);
-            if (files.Length > 0 && File.Exists(files[0]))
-                ConfirmOpenFile(files[0]);
+            ConfirmOpenFile(files[0]);
         }
 
         private void Editor_FormClosing(object sender, FormClosingEventArgs e)
@@ -63,9 +64,11 @@ namespace MHXXGMDTool
 
         private void textBoxText_KeyUp(object sender, KeyEventArgs e)
         {
-            _gmd.Labels[treeViewEntries.SelectedNode.Index].Text = textBoxText.Text;
-            _hasChanges = true;
-            this.Text = TitleName() + "*";
+            if (_gmd.Labels[treeViewEntries.SelectedNode.Index].Text != textBoxText.Text)
+            {
+                _gmd.Labels[treeViewEntries.SelectedNode.Index].Text = textBoxText.Text;
+                FileChanges();
+            }
         }
 
         private void openToolStripMenuItem_Click(object sender, EventArgs e)
@@ -91,6 +94,8 @@ namespace MHXXGMDTool
 
                 if (dr == DialogResult.Yes) SaveFile();
                 else if (dr == DialogResult.Cancel) return;
+
+                _hasChanges = false;
             }
             CloseFile();
         }
@@ -105,14 +110,25 @@ namespace MHXXGMDTool
             ExportCSV();
         }
 
+        private void importCSVToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ImportCSV();
+        }
+
         private void batchExportToolStripMenuItem_Click(object sender, EventArgs e)
         {
             ExportCSV(true);
         }
 
-        private void importCSVToolStripMenuItem_Click(object sender, EventArgs e)
+        private void batchImportToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            ImportCSV();
+            ImportCSV(true);
+        }
+
+        private void exportSettingsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            using var exportSettings = new ExportSettings();
+            exportSettings.ShowDialog();
         }
 
         private void aboutToolStripMenuItem_Click(object sender, EventArgs e)

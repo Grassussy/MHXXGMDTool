@@ -14,6 +14,8 @@ namespace MHXXGMDTool
             Application.SetHighDpiMode(HighDpiMode.SystemAware);
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+            Bluegrams.Application.PortableSettingsProvider.SettingsFileName = "Settings.xml";
+            Bluegrams.Application.PortableSettingsProvider.ApplyProvider(Properties.Settings.Default);
             Application.Run(new Editor());
         }
     }
