@@ -146,7 +146,7 @@ namespace MHXXGMDTool
                 {
                     Labels.Add(new Label
                     {
-                        Name = i < Header.LabelCount ? Names[i] : "unnamed_" + counter.ToString("00000"),
+                        Name = i < Header.LabelCount ? Names[i] : "",
                         Text = DataReader.ReadStringUntilNull(br),
                         TextID = i
                     }
@@ -218,7 +218,7 @@ namespace MHXXGMDTool
             }
         }
 
-        public uint GetLabelCount()
+        public uint GetRealLabelCount()
         {
             return Header.LabelCount;
         }

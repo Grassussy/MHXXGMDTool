@@ -120,15 +120,21 @@ namespace MHXXGMDTool
                 var fiInput = new FileInfo(_openFileName);
                 var i = treeViewEntries.SelectedNode.Index;
 
-                _gmd.Save(fiInput.OpenWrite());
+                _gmd.Save(fiInput.Create());
 
                 _hasChanges = false;
 
                 if (saveAs)
                 {
-                    _gmd = new Gmd(fiInput.OpenRead());
                     CloseFile();
+                    _gmd = new Gmd(fiInput.OpenRead());
+                    _openFileName = fiInput.Name;
                     UpdateForm(i);
+                }
+                else
+                {
+                    this.Text = this.Text.Replace("*", "");
+                    saveToolStripMenuItem.Enabled = false;
                 }
             }
             catch (Exception ex)
@@ -161,6 +167,10 @@ namespace MHXXGMDTool
             closeToolStripMenuItem.Enabled = false;
             exportToCSVToolStripMenuItem.Enabled = false;
             importFromCSVToolStripMenuItem.Enabled = false;
+            importFromGMDToolStripMenuItem.Enabled = false;
+
+            toolStripComboBoxFontSize.Enabled = false;
+            toolStripButtonAddFontSize.Enabled = false;
 
             textBoxText.Enabled = false;
         }
@@ -169,7 +179,7 @@ namespace MHXXGMDTool
         {
             treeViewEntries.BeginUpdate();
             foreach (var entry in _gmd.Labels)
-                treeViewEntries.Nodes.Add(entry.Name);
+                treeViewEntries.Nodes.Add((entry.TextID + 1).ToString("00000") + " " + entry.Name);
             treeViewEntries.SelectedNode = treeViewEntries.Nodes[index];
             treeViewEntries.EndUpdate();
 
@@ -181,6 +191,10 @@ namespace MHXXGMDTool
             closeToolStripMenuItem.Enabled = true;
             exportToCSVToolStripMenuItem.Enabled = true;
             importFromCSVToolStripMenuItem.Enabled = true;
+            importFromGMDToolStripMenuItem.Enabled = true;
+
+            toolStripComboBoxFontSize.Enabled = true;
+            toolStripButtonAddFontSize.Enabled = true;
 
             textBoxText.Enabled = true;
         }
@@ -197,7 +211,7 @@ namespace MHXXGMDTool
             if (isBatch)
             {
                 fbd.UseDescriptionForTitle = true;
-                fbd.Description = "Select folder that contains MHXX GMD files";
+                fbd.Description = "Select source folder containing MHXX GMD files";
                 if (fbd.ShowDialog() != DialogResult.OK)
                     return;
                 source = fbd.SelectedPath;
@@ -277,33 +291,33 @@ namespace MHXXGMDTool
             }
         }
 
-        private bool WriteCSV(string filename, bool isBatch, string output)
+        private bool WriteCSV(string input, bool isBatch, string output)
         {
-            Gmd batchGmd;
-            var fiInput = new FileInfo(filename);
+            var fiInput = new FileInfo(input);
             var fiOutput = new FileInfo(output);
+            Gmd inputGMD;
 
             fiOutput.Directory.Create();
 
             if (isBatch)
-                batchGmd = new Gmd(fiInput.OpenRead());
+                inputGMD = new Gmd(fiInput.OpenRead());
             else
-                batchGmd = _gmd;
+                inputGMD = _gmd;
 
-            if (batchGmd.Labels.Count == 0)
+            if (inputGMD.Labels.Count == 0)
                 return false;
 
             using (var sw = new StreamWriter(output, false, new UTF8Encoding(false)))
             {
-                foreach (var entry in batchGmd.Labels)
+                foreach (var entry in inputGMD.Labels)
                 {
-                    var sName = batchGmd.GetLabelCount() > 0 ? entry.Name : "";
+                    var sName = inputGMD.GetRealLabelCount() > 0 ? (entry.Name != "" ? entry.Name : "unnamed_" + (entry.TextID + 1).ToString("00000")) : "unnamed_" + (entry.TextID + 1).ToString("00000");
                     var sText = entry.Text.Replace("\r\n", "<br>");
 
                     if (Properties.Settings.Default.Export_IncludeID == true)
-                        sw.Write(entry.TextID + "\0");
-                    if (Properties.Settings.Default.Export_IncludeName == true && sName != "")
-                        sw.Write(sName + "\0");
+                        sw.Write(entry.TextID + "\t");
+                    if (Properties.Settings.Default.Export_IncludeName == true && inputGMD.GetRealLabelCount() > 0)
+                        sw.Write(sName + "\t");
 
                     sw.WriteLine(sText);
                 }
@@ -324,12 +338,12 @@ namespace MHXXGMDTool
             if (isBatch)
             {
                 fbd.UseDescriptionForTitle = true;
-                fbd.Description = "Select folder that contains CSV files";
+                fbd.Description = "Select source folder containing CSV files";
                 if (fbd.ShowDialog() != DialogResult.OK)
                     return;
                 source = fbd.SelectedPath;
 
-                fbd.Description = "Select folder that contains MHXX GMD files";
+                fbd.Description = "Select destination folder containing MHXX GMD files";
                 if (fbd.ShowDialog() != DialogResult.OK)
                     return;
                 destination = fbd.SelectedPath;
@@ -355,6 +369,7 @@ namespace MHXXGMDTool
 
                 ofd.Dispose();
             }
+
             try
             {
                 var listFailed = new List<string>();
@@ -409,37 +424,173 @@ namespace MHXXGMDTool
             }
         }
 
-        private bool ImportData(string filename, bool isBatch, string output)
+        private bool ImportData(string input, bool isBatch, string output)
         {
-            Gmd batchGmd;
-            var fiInput = new FileInfo(filename);
+            var fiInput = new FileInfo(input);
             var fiOutput = isBatch ? new FileInfo(output) : null;
+            Gmd outputGMD;
 
             if (isBatch)
-                batchGmd = new Gmd(fiOutput.OpenRead());
+                if (fiOutput.Exists == true)
+                    outputGMD = new Gmd(fiOutput.OpenRead());
+                else
+                    return false;
             else
-                batchGmd = _gmd;
+                outputGMD = _gmd;
 
             using var sr = new StreamReader(fiInput.OpenRead(), new UTF8Encoding(false));
 
-            if (File.ReadAllLines(filename).Length == batchGmd.Labels.Count)
+            if (File.ReadAllLines(input).Length == outputGMD.Labels.Count)
             {
                 var i = 0;
 
                 while (!sr.EndOfStream)
                 {
-                    var data = sr.ReadLine().Split('\0');
-                    batchGmd.Labels[i].Text = data[^1].Replace("<br>", "\r\n");
+                    var data = sr.ReadLine().Split('\t');
+                    outputGMD.Labels[i].Text = data[^1].Replace("<br>", "\r\n");
                     i++;
                 }
 
                 if (isBatch)
-                    batchGmd.Save(fiOutput.OpenWrite());
+                    outputGMD.Save(fiOutput.Create());
 
                 return true;
             }
             else
                 return false;
+        }
+
+        private void ImportFromGMD(bool isBatch = false)
+        {
+            string[] files;
+            string source;
+            string destination;
+
+            var ofd = new OpenFileDialog();
+            var fbd = new FolderBrowserDialog();
+
+            if (isBatch)
+            {
+                fbd.UseDescriptionForTitle = true;
+                fbd.Description = "Select source folder containing MHXX GMD files";
+                if (fbd.ShowDialog() != DialogResult.OK)
+                    return;
+                source = fbd.SelectedPath;
+
+                fbd.Description = "Select destination folder containing MHXX GMD files";
+                if (fbd.ShowDialog() != DialogResult.OK)
+                    return;
+                destination = fbd.SelectedPath;
+
+                files = Directory.GetFiles(source, "*.gmd", SearchOption.AllDirectories);
+
+                fbd.Dispose();
+            }
+            else
+            {
+                var s = Path.GetFileNameWithoutExtension(_openFileName);
+
+                ofd.Title = fileDialogTitle;
+                ofd.Filter = s + ".gmd|" + s + ".gmd";
+                ofd.FileName = s;
+
+                if (ofd.ShowDialog() != DialogResult.OK)
+                    return;
+
+                files = new[] { ofd.FileName };
+                source = "";
+                destination = "";
+
+                ofd.Dispose();
+            }
+
+            try
+            {
+                var listFailed = new List<string>();
+                var countTrue = 0;
+                var countFalse = 0;
+
+                foreach (var input in files)
+                {
+                    var output = isBatch ? destination + input.Replace(source, "") : "";
+
+                    if (ImportGMDData(input, isBatch, output))
+                        countTrue++;
+                    else
+                    {
+                        countFalse++;
+                        if (isBatch)
+                            listFailed.Add(input.Replace(destination, ""));
+                    }
+                }
+
+                if (isBatch)
+                {
+                    if (countFalse == 0)
+                        MessageBox.Show("Batch import (GMD) completed successfully.\n" + countTrue + " file(s) successfully imported.", "Import", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    else if (countTrue == 0)
+                        MessageBox.Show("Failed to batch import (GMD).", "Import", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    else
+                    {
+                        var list = "";
+                        foreach (var s in listFailed)
+                            list += s.Replace(source + "\\", "") + Environment.NewLine;
+                        MessageBox.Show("Only " + countTrue + " out of " + (countTrue + countFalse) + " file(s) successfully imported.", "Import", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                        CreateLogForUnsuccessfulFiles("import", list);
+                    }
+                }
+                else
+                {
+                    if (countFalse == 0)
+                    {
+                        textBoxText.Text = _gmd.Labels[treeViewEntries.SelectedNode.Index].Text;
+                        FileChanges();
+                        MessageBox.Show("Import from GMD completed successfully.", "Import", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    else
+                        MessageBox.Show("Failed to import from GMD.", "Import", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, ex.ToString(), "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private bool ImportGMDData(string filename, bool isBatch, string output)
+        {
+            var fiInput = new FileInfo(filename);
+            var fiOutput = isBatch ? new FileInfo(output) : null;
+            var inputGMD = new Gmd(fiInput.OpenRead());
+            Gmd outputGMD;
+
+            if (isBatch)
+                if (fiOutput.Exists == true)
+                    outputGMD = new Gmd(fiOutput.OpenRead());
+                else
+                    return false;
+            else
+                outputGMD = _gmd;
+
+            for (var i = 0; i < outputGMD.Labels.Count; i++)
+                if (outputGMD.GetRealLabelCount() == 0)
+                    if (outputGMD.Labels.Count == inputGMD.Labels.Count)
+                        outputGMD.Labels[i].Text = inputGMD.Labels[i].Text;
+                    else
+                        return false;
+                else
+                    foreach (var inputLabels in inputGMD.Labels)
+                        if (outputGMD.Labels[i].Name == inputLabels.Name)
+                        {
+                            outputGMD.Labels[i].Text = inputLabels.Text;
+                            break;
+                        }
+
+            if (isBatch)
+                outputGMD.Save(fiOutput.Create());
+
+            return true;
         }
 
         private void CreateLogForUnsuccessfulFiles(string s, string list)
