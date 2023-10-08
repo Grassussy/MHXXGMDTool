@@ -17,8 +17,8 @@ namespace MHXXGMDTool
             pictureBox1.Image = Properties.Resources.image_valstrax;
             label1.Text = "MHXX GMD Tool";
             label2.Text = "Version " + Version;
-            label3.Text = "This program is created by\nTouchGrassus";
-            label4.Text = "2023-06-02";
+            label3.Text = "This program is created by\nGrassussy";
+            label4.Text = "2023-10-08";
         }
     }
 }
